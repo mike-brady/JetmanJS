@@ -54,7 +54,10 @@ class Game {
     }
 
     this.canvas.addEventListener('mousedown', function() { t.mousedown = true; if(!t.gameOver) { t.paused = false; } }, false);
+    this.canvas.addEventListener('touchstart', function() { t.mousedown = true; if(!t.gameOver) { t.paused = false; } }, false);
     this.canvas.addEventListener('mouseup', function() { t.mousedown = false; }, false);
+    this.canvas.addEventListener('touchend', function() { t.mousedown = false; }, false);
+    this.canvas.addEventListener('touchcancel', function() { t.mousedown = false; }, false);
     this.canvas.addEventListener('mouseout', function() { t.mousedown = false; }, true);
     this.canvas.addEventListener('mouseenter', function() { if(t.globalMousedown) { t.mousedown = true; } }, true);
 
@@ -83,7 +86,7 @@ class Game {
     var lastColumn = this.columns[this.columns.length-1];
 
     //If the gap can't go any higher or lower, give a 50/50 chance of the slope going the opposite direction or remaining straight
-    if(lastColumn.gapTop == this.minWallHeight || lastColumn.gapBottom == this.canvas.height - this.minWallHeight) {
+    if(lastColumn.top == this.minWallHeight || lastColumn.bottom == this.canvas.height - this.minWallHeight) {
       rand *= 2;
     }
     //Else give a 33/33/33 chance of the slope going up, down, or straigt
@@ -96,7 +99,7 @@ class Game {
     }
     else {
       this.slope = Math.random()*this.maxSlope*-1;
-      if(lastColumn.gapTop == this.minWallHeight || rand > 2) {
+      if(lastColumn.top == this.minWallHeight || rand > 2) {
         this.slope *= -1;
       }
     }
