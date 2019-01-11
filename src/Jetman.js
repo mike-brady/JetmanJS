@@ -1,6 +1,6 @@
 class Jetman extends Object {
-  constructor(x, y, sprite) {
-    super(x, y, 0, 0);
+  constructor(sprite) {
+    super(0, 0, 0, 0);
 
     this.riseRate = 2.25;
 
