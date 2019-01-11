@@ -4,7 +4,7 @@ class Game {
     this.canvas = canvas;
     this.ctx = this.canvas.getContext("2d");
 
-    this.jetman = jetman
+    this.jetman = jetman;
 
     this.columnWidth = 1;
     this.defaultGapHeight = this.canvas.height/1.5;
@@ -16,15 +16,18 @@ class Game {
     this.slopeChangeRateSD = 150/this.columnWidth;
     this.nextSlopeChange = this.slopeChangeRate;
     this.columns = [];
+    this.barriers = [];
+    this.nextBarrier = this.canvas.width*1.25;
 
     this.paused = true;
+    this.gameOver = false;
     this.stepper;
     this.frameRate = 60;
-    this.speed = 12;
+    this.speed = 4;
 
     this.mousedown = false;
     this.globalMousedown = false;
-    this.fallRate = 3.25;
+    this.fallRate = 3;
 
     this.dist = 0;
     this.score = 0;
@@ -50,13 +53,13 @@ class Game {
       document.addEventListener('keyup', function(e) { if(e.keyCode == 32) { t.playPause(); } }, true);
     }
 
-    this.canvas.addEventListener('mousedown', function() { t.mousedown = true; t.paused = false; }, false);
+    this.canvas.addEventListener('mousedown', function() { t.mousedown = true; if(!t.gameOver) { t.paused = false; } }, false);
     this.canvas.addEventListener('mouseup', function() { t.mousedown = false; }, false);
     this.canvas.addEventListener('mouseout', function() { t.mousedown = false; }, true);
     this.canvas.addEventListener('mouseenter', function() { if(t.globalMousedown) { t.mousedown = true; } }, true);
 
     var t = this;
-    this.stepper = setInterval(function() { for(var i=0; i<t.speed; i++) { t.step(); } t.draw(); }, 1000/t.frameRate);
+    this.stepper = setInterval(function() { t.step(); t.draw(); }, 1000/t.frameRate);
   }
 
   playPause() {
@@ -97,61 +100,93 @@ class Game {
         this.slope *= -1;
       }
     }
-
   }
 
-  addColumn() {
-    var column = {};
-    if(this.columns.length > 0) {
-      column.gapCenter = this.columns[this.columns.length-1].gapCenter + this.slope*this.columnWidth;
-    } else {
-      column.gapCenter = this.canvas.height/2;
+  removeColumns() {
+    while(this.columns[0].right <= 0) {
+      this.columns.shift();
     }
+  }
 
-    column.gapHeight = this.defaultGapHeight;
+  addColumns() {
+    while(this.columns.length == 0 || this.columns[this.columns.length-1].left <= this.canvas.width) {
+      var x = this.columnWidth/2;
+      var y = this.canvas.height/2;
+      var height = this.defaultGapHeight;
 
-    column.gapTop = Math.min(this.canvas.height - this.minWallHeight - this.minGapHeight, Math.max(this.minWallHeight, column.gapCenter - column.gapHeight/2));
-    column.gapBottom = Math.max(this.minWallHeight + this.minGapHeight, Math.min(this.canvas.height - this.minWallHeight, column.gapCenter + column.gapHeight/2));
+      if(this.columns.length > 0) {
+        var lastColumn = this.columns[this.columns.length-1];
+        x = lastColumn.right;
+        y = Math.min(
+              this.canvas.height - this.minWallHeight - height/2,
+              Math.max(
+                this.minWallHeight+height/2,
+                this.columns[this.columns.length-1].y + this.slope*this.columnWidth
+              )
+            );
+      }
 
-    column.gapHeight = column.gapBottom - column.gapTop;
-    column.gapCenter = column.gapTop + column.gapHeight/2;
+      this.columns.push(new Object(x, y, this.columnWidth, height));
+    }
+  }
 
-    this.columns.push(column);
+  addBarrier(x, y, width, height) {
+    this.barriers.push(new Object(x, y, width, height));
   }
 
   step() {
     if(this.paused) {
       return;
     }
-    this.columns.shift();
+
+    var dist = this.speed;
+
+    for(var i in this.columns) {
+      var oldXY = this.columns[i].getXY();
+      this.columns[i].setXY(oldXY.x - dist, oldXY.y);
+    }
+
+    for(var i in this.barriers) {
+      var oldXY = this.barriers[i].getXY();
+      this.barriers[i].setXY(oldXY.x - dist, oldXY.y);
+    }
+
+    var oldXY = this.jetman.getXY();
+    var newXY = oldXY;
+    if(this.mousedown) {
+      newXY.y = oldXY.y - this.jetman.riseRate;
+      this.jetman.setXY(newXY.x, newXY.y);
+    } else {
+      newXY.y = oldXY.y + this.fallRate;
+      this.jetman.setXY(newXY.x, newXY.y);
+    }
+
+    if(this.crashed()) {
+      this.endGame();
+    } else {
+      this.dist += dist;
+      this.score = Math.round(this.dist/100);
+    }
+
     this.nextSlopeChange--;
+    this.nextBarrier -= dist;
 
     if(this.columns.length > this.nextSlopeChange) {
       this.setSlope();
       this.setNextSlopeChange();
     }
 
-    var oldXY = this.jetman.getXY();
-    var newXY = oldXY;
-    if(this.mousedown) {
-      newXY[1] = oldXY[1] - this.jetman.riseRate/this.speed;
-      this.jetman.setXY(newXY[0],Math.max(this.minWallHeight + this.jetman.height/2, newXY[1]));
-    } else {
-      newXY[1] = oldXY[1] + this.fallRate/this.speed;
-      this.jetman.setXY(newXY[0],Math.min(this.canvas.height - this.minWallHeight - this.jetman.height/2, newXY[1]));
+    if(this.nextBarrier < this.dist + this.canvas.width/2) {
+      this.addBarrier(this.canvas.width, this.canvas.height/2-30, 20, 60); console.log('TODO: Fix this. Not static ints.');
+      this.nextBarrier = this.dist + this.canvas.width * 2;
     }
 
-    if(this.collision()) {
-      this.endGame();
-    } else {
-      this.dist++;
-      this.score = Math.round(this.dist/100);
-    }
-
-    this.addColumn();
+    this.removeColumns();
+    this.addColumns();
   }
 
   endGame() {
+    this.gameOver = true;
     this.paused = true;
     if(this.score > this.highScore) {
       localStorage.jetmanHS = this.score;
@@ -169,17 +204,24 @@ class Game {
     this.ctx.fillStyle = "#000000";
     for(var i in this.columns) {
       if(this.debugMode) {
+        //reset fillStyle because it will have been set to a different color when drawing the center line
         this.ctx.fillStyle = "#000000";
       }
-      this.ctx.fillRect(i*this.columnWidth, this.columns[i].gapTop, this.columnWidth, this.columns[i].gapHeight);
+
+      this.ctx.fillRect(this.columns[i].left, this.columns[i].top, this.columns[i].width, this.columns[i].height);
       if(this.debugMode) {
         //draw center line of gap
-        this.ctx.fillStyle = "#882222";
-        this.ctx.fillRect(i*this.columnWidth, this.columns[i].gapTop + this.columns[i].gapHeight/2, 1, 1);
+        this.ctx.fillStyle = "#ff0000";
+        this.ctx.fillRect(this.columns[i].x, this.columns[i].y, 1, 1);
       }
     }
 
-    this.ctx.drawImage(this.jetman.sprite, this.jetman.x - this.jetman.width/2, this.jetman.y - this.jetman.height/2, this.jetman.width, this.jetman.height);
+    for(var i in this.barriers) {
+      this.ctx.fillStyle = "#3333ff";
+      this.ctx.fillRect(this.barriers[i].left, this.barriers[i].top, this.barriers[i].width, this.barriers[i].height);
+    }
+
+    this.ctx.drawImage(this.jetman.sprite, this.jetman.left, this.jetman.top, this.jetman.width, this.jetman.height);
     if(this.debugMode) {
       this.ctx.strokeStyle = "#888822";
       this.ctx.strokeRect(this.jetman.x - this.jetman.width/2, this.jetman.y - this.jetman.height/2, this.jetman.width, this.jetman.height);
@@ -198,11 +240,15 @@ class Game {
     }
   }
 
-  collision() {
-    var i = Math.floor(this.jetman.x - this.jetman.width/2);
-    var max = Math.ceil(this.jetman.x + this.jetman.width/2);
-    for(i; i<max; i++) {
-      if(this.jetman.y-this.jetman.height/2 <= this.columns[i].gapTop || this.jetman.y+this.jetman.height/2 >= this.columns[i].gapBottom) {
+  crashed() {
+    for(var i in this.columns) {
+      if(this.xCollision(this.jetman, this.columns[i]) && this.yOutOfBounds(this.jetman, this.columns[i])) {
+        return true;
+      }
+    }
+
+    for(var i in this.barriers) {
+      if(this.collision(this.jetman, this.barriers[i])) {
         return true;
       }
     }
@@ -210,17 +256,60 @@ class Game {
     return false;
   }
 
+  collision(a, b) {
+    if(this.xCollision(a, b) && this.yCollision(a, b)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  xCollision(a, b) {
+    if(a.left <= b.right && a.right >= b.left) {
+      return true;
+    }
+
+    return false;
+  }
+
+  yCollision(a, b) {
+    if(a.top <= b.bottom && a.bottom >= b.top) {
+      return true;
+    }
+
+    return false;
+  }
+
+  xOutOfBounds(a, b) {
+    if(a.left <= b.left || a.right >= b.right) {
+      return true;
+    }
+
+    return false;
+  }
+
+  yOutOfBounds(a, b) {
+    if(a.top <= b.top || a.bottom >= b.bottom) {
+      return true;
+    }
+
+    return false;
+  }
+
   reset() {
     this.columns = [];
+    this.barriers = [];
     this.slope = 0;
+    this.dist = 0;
     this.score = 0;
 
-    for(var i=0; Math.ceil(i<this.canvas.width/this.columnWidth); i++) {
-      this.addColumn();
-    }
+    this.addColumns();
 
     this.jetman.setXY(this.canvas.width/2, this.canvas.height/2);
 
     this.draw();
+
+    this.paused = true;
+    this.gameOver = false;
   }
 }

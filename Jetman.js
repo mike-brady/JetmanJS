@@ -1,12 +1,8 @@
-class Jetman {
+class Jetman extends Object {
   constructor(x, y, sprite) {
-    this.x = x;
-    this.y = y;
+    super(x, y, 0, 0);
 
-    this.width = 0;
-    this.height = 0;
-
-    this.riseRate = 2.5;
+    this.riseRate = 2.25;
 
     this.sprite = new Image();
     this.sprite.src = sprite;
@@ -15,15 +11,8 @@ class Jetman {
     this.sprite.onload = function() {
       t.width = this.width;
       t.height = this.height;
+
+      t.setBounds();
     }
-  }
-
-  setXY(x, y) {
-    this.x = x;
-    this.y = y;
-  }
-
-  getXY() {
-    return [this.x, this.y];
   }
 }
