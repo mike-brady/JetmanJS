@@ -3,6 +3,8 @@ class Game {
     this.debugMode = false;
     this.canvas = canvas;
     this.ctx = this.canvas.getContext("2d");
+    this.canvas.width = this.canvas.scrollWidth;
+    this.canvas.height = this.canvas.scrollHeight;
 
     this.jetman = jetman;
 
