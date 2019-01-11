@@ -1,0 +1,14 @@
+{
+  "name": "JetmanJS",
+  "description": "A JavaScript remake of the original Facebook game, Jetman.",
+  "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mike-brady/JetmanJS.git"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mike-brady/JetmanJS/issues"
+  },
+  "homepage": "https://github.com/mike-brady/JetmanJS"
+}
