@@ -21,7 +21,7 @@ Create a canvas element with an id of "jetmanjs".
 Create a Jetman object, get the canvas element, and initialize the game.
 ```
 window.onload = function() {
-  var jetman = new Jetman('sprites/jetman.png');
+  var jetman = new Jetman("sprites/jetman.png");
   var canvas = document.getElementById("jetmanjs");
   var game = new Game(canvas, jetman);
   game.init();
